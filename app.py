@@ -1,4 +1,7 @@
 import streamlit as st
+from src.session import initialize_session
+
+initialize_session()
 
 from pages import (
     home,
