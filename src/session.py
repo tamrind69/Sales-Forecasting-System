@@ -4,6 +4,7 @@ DEFAULT_SESSION_STATE = {
     "raw_df": None,
     "processed_df": None,
     "dataset_name": None,
+    "validation_report": None,
     "model": None,
     "metrics": None,
     "predictions": None,
