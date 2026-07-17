@@ -20,19 +20,25 @@ def show():
 
     df = st.session_state.processed_df
 
-    # =====================================================
+    numeric_columns = st.session_state.numeric_columns
+    categorical_columns = st.session_state.categorical_columns
+    date_columns = st.session_state.date_columns
+
     # Dataset Overview
-    # =====================================================
 
     st.header("Dataset Overview")
 
-    overview = generate_overview(df)
+    overview = generate_overview(
+        df,
+        numeric_columns,
+        categorical_columns,
+        date_columns,
+    )
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.metric("Rows", overview["rows"])
-
         st.metric(
             "Numeric Columns",
             overview["numeric_columns"]
@@ -40,7 +46,6 @@ def show():
 
     with col2:
         st.metric("Columns", overview["columns"])
-
         st.metric(
             "Categorical Columns",
             overview["categorical_columns"]
@@ -51,7 +56,6 @@ def show():
             "Memory Usage",
             f'{overview["memory_usage_mb"]} MB'
         )
-
         st.metric(
             "Datetime Columns",
             overview["datetime_columns"]
@@ -64,13 +68,14 @@ def show():
 
     st.divider()
 
-    # =====================================================
     # Numerical Analysis
-    # =====================================================
 
     st.header("Numerical Analysis")
 
-    numerical = analyze_numerical(df)
+    numerical = analyze_numerical(
+        df,
+        numeric_columns,
+    )
 
     if numerical["summary"].empty:
 
@@ -112,13 +117,14 @@ def show():
 
     st.divider()
 
-    # =====================================================
     # Categorical Analysis
-    # =====================================================
 
     st.header("Categorical Analysis")
 
-    categorical = analyze_categorical(df)
+    categorical = analyze_categorical(
+        df,
+        categorical_columns,
+    )
 
     if categorical["summary"].empty:
 
@@ -162,13 +168,14 @@ def show():
 
     st.divider()
 
-    # =====================================================
     # Correlation Analysis
-    # =====================================================
 
     st.header("Correlation Analysis")
 
-    corr = compute_correlation(df)
+    corr = compute_correlation(
+        df,
+        numeric_columns,
+    )
 
     if corr.empty:
 
@@ -190,13 +197,14 @@ def show():
 
     st.divider()
 
-    # =====================================================
     # Outlier Analysis
-    # =====================================================
 
     st.header("Outlier Analysis")
 
-    outliers = detect_outliers(df)
+    outliers = detect_outliers(
+        df,
+        numeric_columns,
+    )
 
     if outliers.empty:
 

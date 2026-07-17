@@ -84,6 +84,17 @@ def show():
 
         st.session_state.processed_df = cleaned_df
 
+        # Save user-defined column types
+        st.session_state.numeric_columns = numeric_columns
+        st.session_state.date_columns = date_columns
+
+        st.session_state.categorical_columns = [
+            col
+            for col in cleaned_df.columns
+            if col not in numeric_columns
+            and col not in date_columns
+        ]
+
         st.success("Cleaning completed successfully!")
 
         st.subheader("Cleaning Summary")

@@ -1,47 +1,44 @@
-# src/eda/categorical.py
-
 import pandas as pd
 
 
-def analyze_categorical(df: pd.DataFrame) -> dict:
+def analyze_categorical(
+    df: pd.DataFrame,
+    categorical_columns: list,
+) -> dict:
     """
-    Generate summary statistics for categorical columns.
+    Analyze categorical columns in the dataset.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataset.
+    categorical_columns : list
+        User-selected categorical columns.
 
     Returns
     -------
     dict
-        Categorical analysis results.
+        Categorical summary statistics.
     """
 
-    categorical_df = df.select_dtypes(include=["object", "category"])
-
-    if categorical_df.empty:
+    if not categorical_columns:
         return {
             "categorical_columns": [],
-            "summary": pd.DataFrame()
+            "summary": pd.DataFrame(),
         }
 
-    summary = []
+    categorical_df = df[categorical_columns]
 
-    for column in categorical_df.columns:
-
-        value_counts = categorical_df[column].value_counts(dropna=False)
-
-        summary.append({
-            "Column": column,
-            "Unique Values": categorical_df[column].nunique(dropna=True),
-            "Most Frequent": value_counts.index[0],
-            "Frequency": value_counts.iloc[0]
-        })
-
-    summary = pd.DataFrame(summary)
+    summary = pd.DataFrame({
+        "Column": categorical_df.columns,
+        "Unique Values": categorical_df.nunique().values,
+        "Most Frequent": categorical_df.mode().iloc[0].values,
+        "Frequency": categorical_df.apply(
+            lambda col: col.value_counts().iloc[0]
+        ).values,
+    })
 
     return {
-        "categorical_columns": categorical_df.columns.tolist(),
-        "summary": summary
+        "categorical_columns": categorical_columns,
+        "summary": summary,
     }

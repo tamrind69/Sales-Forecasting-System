@@ -1,16 +1,19 @@
-# src/eda/correlation.py
-
 import pandas as pd
 
 
-def compute_correlation(df: pd.DataFrame) -> pd.DataFrame:
+def compute_correlation(
+    df: pd.DataFrame,
+    numeric_columns: list,
+) -> pd.DataFrame:
     """
-    Compute the Pearson correlation matrix for numerical columns.
+    Compute the correlation matrix for numerical columns.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataset.
+    numeric_columns : list
+        User-selected numerical columns.
 
     Returns
     -------
@@ -18,14 +21,11 @@ def compute_correlation(df: pd.DataFrame) -> pd.DataFrame:
         Correlation matrix.
     """
 
-    numeric_df = df.select_dtypes(include="number")
-
-    if numeric_df.shape[1] < 2:
+    if len(numeric_columns) < 2:
         return pd.DataFrame()
 
-    correlation_matrix = numeric_df.corr(
-        method="pearson",
-        numeric_only=True
-    )
+    numeric_df = df[numeric_columns]
 
-    return correlation_matrix.round(3)
+    correlation_matrix = numeric_df.corr().round(2)
+
+    return correlation_matrix

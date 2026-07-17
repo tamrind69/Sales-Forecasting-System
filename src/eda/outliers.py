@@ -1,9 +1,10 @@
-# src/eda/outliers.py
-
 import pandas as pd
 
 
-def detect_outliers(df: pd.DataFrame) -> pd.DataFrame:
+def detect_outliers(
+    df: pd.DataFrame,
+    numeric_columns: list,
+) -> pd.DataFrame:
     """
     Detect outliers in numerical columns using the IQR method.
 
@@ -11,19 +12,21 @@ def detect_outliers(df: pd.DataFrame) -> pd.DataFrame:
     ----------
     df : pd.DataFrame
         Input dataset.
+    numeric_columns : list
+        User-selected numerical columns.
 
     Returns
     -------
     pd.DataFrame
-        Outlier summary for each numerical column.
+        Summary of outliers for each numerical column.
     """
 
-    numeric_df = df.select_dtypes(include="number")
-
-    if numeric_df.empty:
+    if not numeric_columns:
         return pd.DataFrame()
 
-    summary = []
+    numeric_df = df[numeric_columns]
+
+    outlier_summary = []
 
     for column in numeric_df.columns:
 
@@ -32,23 +35,21 @@ def detect_outliers(df: pd.DataFrame) -> pd.DataFrame:
 
         iqr = q3 - q1
 
-        lower_bound = q1 - (1.5 * iqr)
-        upper_bound = q3 + (1.5 * iqr)
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
 
-        outlier_mask = (
+        outliers = (
             (numeric_df[column] < lower_bound)
             | (numeric_df[column] > upper_bound)
         )
 
-        outlier_count = outlier_mask.sum()
-
-        summary.append({
+        outlier_summary.append({
             "Column": column,
-            "Outliers": outlier_count,
+            "Outliers": outliers.sum(),
             "Percentage": round(
-                (outlier_count / len(numeric_df)) * 100,
+                outliers.mean() * 100,
                 2
             )
         })
 
-    return pd.DataFrame(summary)
+    return pd.DataFrame(outlier_summary)

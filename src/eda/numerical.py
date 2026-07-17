@@ -1,28 +1,33 @@
 import pandas as pd
 
 
-def analyze_numerical(df: pd.DataFrame) -> dict:
+def analyze_numerical(
+    df: pd.DataFrame,
+    numeric_columns: list,
+) -> dict:
     """
-    Generate summary statistics for numerical columns.
+    Analyze numerical columns in the dataset.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataset.
+    numeric_columns : list
+        User-selected numerical columns.
 
     Returns
     -------
     dict
-        Numerical analysis results.
+        Numerical summary statistics.
     """
 
-    numeric_df = df.select_dtypes(include="number")
-
-    if numeric_df.empty:
+    if not numeric_columns:
         return {
             "numeric_columns": [],
-            "summary": pd.DataFrame()
+            "summary": pd.DataFrame(),
         }
+
+    numeric_df = df[numeric_columns]
 
     summary = pd.DataFrame({
         "Mean": numeric_df.mean(),
@@ -33,14 +38,13 @@ def analyze_numerical(df: pd.DataFrame) -> dict:
         "Q3": numeric_df.quantile(0.75),
         "Max": numeric_df.max(),
         "Skewness": numeric_df.skew(),
-        "Kurtosis": numeric_df.kurt()
-    })
+        "Kurtosis": numeric_df.kurt(),
+    }).round(2)
 
-    summary = summary.round(3)
     summary.index.name = "Column"
     summary.reset_index(inplace=True)
 
     return {
-        "numeric_columns": numeric_df.columns.tolist(),
-        "summary": summary
+        "numeric_columns": numeric_columns,
+        "summary": summary,
     }
