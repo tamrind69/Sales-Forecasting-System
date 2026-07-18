@@ -1,133 +1,205 @@
 import streamlit as st
-import src.cleaning as cleaning
 
+from src.preprocessing import preprocess_dataset
 
 def show():
+    st.set_page_config(page_title="Preprocessing")
 
-    st.title("🧹 Data Cleaning & Preprocessing")
+    st.title("⚙️ Preprocessing")
 
-    if st.session_state.raw_df is None:
-        st.warning("Please upload a dataset first.")
+
+    # Check previous stage
+
+    if st.session_state.processed_df is None:
+        st.warning("Please complete Data Cleaning first.")
         st.stop()
 
-    df = st.session_state.raw_df
+    df = st.session_state.processed_df
 
-    st.subheader("Dataset Preview")
 
-    st.dataframe(
-        df.head(),
-        use_container_width=True
+    # Target Column
+
+    st.subheader("1. Target Variable")
+
+    target_column = st.selectbox(
+        "Select target column",
+        df.columns,
     )
 
-    st.divider()
 
-    st.subheader("Column Configuration")
+    # Feature Selection
 
-    date_columns = st.multiselect(
-        "Date Columns",
-        options=df.columns.tolist(),
-        default=[]
+    st.subheader("2. Feature Selection")
+
+    default_features = [
+        col
+        for col in df.columns
+        if col != target_column
+    ]
+
+    feature_columns = st.multiselect(
+        "Select feature columns",
+        options=[
+            col
+            for col in df.columns
+            if col != target_column
+        ],
+        default=default_features,
     )
 
-    numeric_columns = st.multiselect(
-        "Numeric Columns",
-        options=df.columns.tolist(),
-        default=df.select_dtypes(include="number").columns.tolist()
+
+    # Scaling
+
+    st.subheader("3. Numerical Scaling")
+
+    scaler_name = st.selectbox(
+        "Scaler",
+        [
+            "None",
+            "StandardScaler",
+            "MinMaxScaler",
+            "RobustScaler",
+        ],
     )
 
-    st.divider()
 
-    st.subheader("Cleaning Options")
+    # Train Test Split
 
-    trim_text = st.checkbox(
-        "Trim whitespace",
-        value=True
+    st.subheader("4. Train / Test Split")
+
+    test_size = st.slider(
+        "Test Size",
+        min_value=0.1,
+        max_value=0.5,
+        value=0.2,
+        step=0.05,
     )
 
-    convert_numeric = st.checkbox(
-        "Convert numeric columns",
-        value=True
+    random_state = st.number_input(
+        "Random State",
+        value=42,
     )
 
-    convert_dates = st.checkbox(
-        "Convert date column",
-        value=True
+    shuffle = st.checkbox(
+        "Shuffle Dataset",
+        value=True,
     )
 
-    fill_missing = st.checkbox(
-        "Fill missing values",
-        value=True
-    )
 
-    remove_duplicates = st.checkbox(
-        "Remove duplicate rows",
-        value=True
-    )
+    # Apply
 
     st.divider()
 
     if st.button(
-        "Run Cleaning",
-        type="primary"
+        "Apply Preprocessing",
+        use_container_width=True,
     ):
 
-        cleaned_df, report = cleaning.clean_dataset(
-            df=df,
-            numeric_columns=numeric_columns,
-            date_columns=date_columns,
-            trim_text=trim_text,
-            convert_numeric=convert_numeric,
-            convert_dates=convert_dates,
-            fill_missing=fill_missing,
-            remove_duplicates=remove_duplicates,
-        )
+        if len(feature_columns) == 0:
+            st.error("Select at least one feature.")
+            st.stop()
 
-        st.session_state.processed_df = cleaned_df
-
-        # Save user-defined column types
-        st.session_state.numeric_columns = numeric_columns
-        st.session_state.date_columns = date_columns
-
-        st.session_state.categorical_columns = [
+        numeric_columns = [
             col
-            for col in cleaned_df.columns
-            if col not in numeric_columns
-            and col not in date_columns
+            for col in st.session_state.numeric_columns
+            if col in feature_columns
         ]
 
-        st.success("Cleaning completed successfully!")
+        categorical_columns = [
+            col
+            for col in st.session_state.categorical_columns
+            if col in feature_columns
+        ]
 
-        st.subheader("Cleaning Summary")
+        results = preprocess_dataset(
+            df=df,
+            target_column=target_column,
+            feature_columns=feature_columns,
+            numeric_columns=numeric_columns,
+            categorical_columns=categorical_columns,
+            scaler_name=scaler_name,
+            test_size=test_size,
+            random_state=random_state,
+            shuffle=shuffle,
+        )
+
+        st.session_state.target_column = target_column
+        st.session_state.feature_columns = feature_columns
+
+        st.session_state.preprocessing = results
+
+        st.success("Preprocessing completed successfully!")
+
+
+
+
+    # Preprocessing Summary
+
+    if st.session_state.preprocessing["X_train"] is not None:
+
+        st.divider()
+
+        st.subheader("Preprocessing Summary")
+
+        numeric_columns = [
+            col
+            for col in st.session_state.numeric_columns
+            if col in st.session_state.feature_columns
+        ]
+
+        categorical_columns = [
+            col
+            for col in st.session_state.categorical_columns
+            if col in st.session_state.feature_columns
+        ]
+
+        feature_names = (
+            st.session_state.preprocessing["preprocessor"]
+            .get_feature_names_out()
+        )
 
         col1, col2 = st.columns(2)
 
         with col1:
             st.metric(
-                "Numeric Columns Converted",
-                report["numeric_columns_converted"]
+                "Training Samples",
+                st.session_state.preprocessing["X_train"].shape[0],
             )
 
             st.metric(
-                "Missing Values Filled",
-                report["missing_values_filled"]
+                "Selected Features",
+                len(st.session_state.feature_columns),
+            )
+
+            st.metric(
+                "Numeric Features",
+                len(numeric_columns),
             )
 
         with col2:
             st.metric(
-                "Date Columns Converted",
-                report["date_columns_converted"]
+                "Testing Samples",
+                st.session_state.preprocessing["X_test"].shape[0],
             )
 
             st.metric(
-                "Duplicate Rows Removed",
-                report["duplicates_removed"]
+                "Target Variable",
+                st.session_state.target_column,
             )
 
-    st.divider()
+            st.metric(
+                "Categorical Features",
+                len(categorical_columns),
+            )
 
-    st.subheader("Preprocessing")
+        st.info(
+        f"""
+        Preprocessing completed successfully.
 
-    st.info(
-        "Feature encoding, scaling, train-test split, and other preprocessing "
-        "steps will be implemented in the next stage of the project."
-    )
+        - Final feature count after preprocessing: **{len(feature_names)}**
+        - Training feature matrix shape: **{st.session_state.preprocessing["X_train"].shape}**
+        - Testing feature matrix shape: **{st.session_state.preprocessing["X_test"].shape}**
+
+        Categorical features have been encoded and numerical features have been scaled.
+        """
+        )

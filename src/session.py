@@ -1,17 +1,45 @@
 import streamlit as st
 
 DEFAULT_SESSION_STATE = {
+
+    # ------------------------------
+    # Dataset
+    # ------------------------------
+
     "raw_df": None,
     "processed_df": None,
     "dataset_name": None,
-    "model": None,
-    "metrics": None,
-    "predictions": None,
 
-    # Column configuration
+    # ------------------------------
+    # Column Configuration
+    # ------------------------------
+
     "numeric_columns": [],
     "categorical_columns": [],
     "date_columns": [],
+
+    # ------------------------------
+    # Preprocessing
+    # ------------------------------
+
+    "target_column": None,
+    "feature_columns": [],
+
+    "preprocessing": {
+        "X_train": None,
+        "X_test": None,
+        "y_train": None,
+        "y_test": None,
+        "preprocessor": None,
+    },
+
+    # ------------------------------
+    # Model
+    # ------------------------------
+
+    "model": None,
+    "metrics": None,
+    "predictions": None,
 }
 
 def initialize_session():
