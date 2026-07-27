@@ -1,6 +1,11 @@
 import pandas as pd
 import streamlit as st
 
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
 
 def show():
     st.set_page_config(page_title="Model Training")
@@ -136,11 +141,56 @@ def show():
             "Gradient Boosting Regressor",
         ],
     )
-
     if st.button(
         "Train Model",
         use_container_width=True,
     ):
-        st.info(
-            f"Training **{model_name}**... (implementation coming next)"
-        )
+
+        if model_name == "Linear Regression":
+            model = LinearRegression()
+
+        elif model_name == "Decision Tree Regressor":
+            model = DecisionTreeRegressor(random_state=42)
+
+        elif model_name == "Random Forest Regressor":
+            model = RandomForestRegressor(random_state=42)
+
+        elif model_name == "Gradient Boosting Regressor":
+            model = GradientBoostingRegressor(random_state=42)
+
+        model.fit(X_train, y_train)
+
+        y_pred = model.predict(X_test)
+
+        mae = mean_absolute_error(y_test, y_pred)
+
+        rmse = mean_squared_error(
+            y_test,
+            y_pred,
+        ) ** 0.5
+
+        r2 = r2_score(y_test, y_pred)
+
+        st.success(f"{model_name} trained successfully!")
+
+        st.subheader("Model Performance")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric(
+                "MAE",
+                f"{mae:.2f}",
+            )
+
+        with col2:
+            st.metric(
+                "RMSE",
+                f"{rmse:.2f}",
+            )
+
+        with col3:
+            st.metric(
+                "R² Score",
+                f"{r2:.3f}",
+            )
