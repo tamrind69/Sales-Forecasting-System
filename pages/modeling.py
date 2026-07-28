@@ -173,24 +173,66 @@ def show():
 
         st.success(f"{model_name} trained successfully!")
 
+        st.session_state["model"] = model
+
+        st.session_state["predictions"] = y_pred
+
+        st.session_state["metrics"] = {
+            "model_name": model_name,
+            "mae": mae,
+            "rmse": rmse,
+            "r2": r2,
+        }
+
+        # Model Performance
+
+    if st.session_state["metrics"] is not None:
+
+        metrics = st.session_state["metrics"]
+
+        st.divider()
+
         st.subheader("Model Performance")
+
+        st.write(f"**Model:** {metrics['model_name']}")
 
         col1, col2, col3 = st.columns(3)
 
         with col1:
             st.metric(
                 "MAE",
-                f"{mae:.2f}",
+                f"{metrics['mae']:.2f}",
             )
 
         with col2:
             st.metric(
                 "RMSE",
-                f"{rmse:.2f}",
+                f"{metrics['rmse']:.2f}",
             )
 
         with col3:
             st.metric(
                 "R² Score",
-                f"{r2:.3f}",
+                f"{metrics['r2']:.3f}",
             )
+
+        # Prediction Results
+
+    if st.session_state["predictions"] is not None:
+
+        st.divider()
+
+        st.subheader("Prediction Results")
+
+        prediction_df = pd.DataFrame(
+            {
+                "Actual": y_test.to_numpy(),
+                "Predicted": st.session_state["predictions"],
+            }
+        )
+
+        st.dataframe(
+            prediction_df,
+            use_container_width=True,
+            hide_index=True,
+        )

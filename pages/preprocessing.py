@@ -2,11 +2,11 @@ import streamlit as st
 
 from src.preprocessing import preprocess_dataset
 
+
 def show():
     st.set_page_config(page_title="Preprocessing")
 
     st.title("⚙️ Preprocessing")
-
 
     # Check previous stage
 
@@ -21,9 +21,20 @@ def show():
 
     st.subheader("1. Target Variable")
 
+    if (
+        st.session_state.target_column is not None
+        and st.session_state.target_column in df.columns
+    ):
+        target_index = list(df.columns).index(
+            st.session_state.target_column
+        )
+    else:
+        target_index = 0
+
     target_column = st.selectbox(
         "Select target column",
         df.columns,
+        index=target_index,
     )
 
 
@@ -31,19 +42,30 @@ def show():
 
     st.subheader("2. Feature Selection")
 
-    default_features = [
+    available_features = [
         col
-        for col in df.columns
-        if col != target_column
+        for col in (
+            st.session_state.numeric_columns
+            + st.session_state.categorical_columns
+        )
+        if col != target_column and col in df.columns
     ]
+
+    # Use previous feature selection if preprocessing
+    # has already been configured
+
+    if st.session_state.feature_columns:
+        default_features = [
+            col
+            for col in st.session_state.feature_columns
+            if col in available_features
+        ]
+    else:
+        default_features = available_features
 
     feature_columns = st.multiselect(
         "Select feature columns",
-        options=[
-            col
-            for col in df.columns
-            if col != target_column
-        ],
+        options=available_features,
         default=default_features,
     )
 
@@ -128,9 +150,13 @@ def show():
 
         st.session_state.preprocessing = results
 
+        # Previous model is no longer valid after preprocessing changes
+
+        st.session_state.model = None
+        st.session_state.metrics = None
+        st.session_state.predictions = None
+
         st.success("Preprocessing completed successfully!")
-
-
 
 
     # Preprocessing Summary
@@ -193,13 +219,13 @@ def show():
             )
 
         st.info(
-        f"""
-        Preprocessing completed successfully.
+            f"""
+            Preprocessing completed successfully.
 
-        - Final feature count after preprocessing: **{len(feature_names)}**
-        - Training feature matrix shape: **{st.session_state.preprocessing["X_train"].shape}**
-        - Testing feature matrix shape: **{st.session_state.preprocessing["X_test"].shape}**
+            - Final feature count after preprocessing: **{len(feature_names)}**
+            - Training feature matrix shape: **{st.session_state.preprocessing["X_train"].shape}**
+            - Testing feature matrix shape: **{st.session_state.preprocessing["X_test"].shape}**
 
-        Categorical features have been encoded and numerical features have been scaled.
-        """
+            Categorical features have been encoded and numerical features have been scaled.
+            """
         )
