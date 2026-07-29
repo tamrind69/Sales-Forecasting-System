@@ -1,220 +1,184 @@
-from sklearn.compose import ColumnTransformer
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import (
-    OneHotEncoder,
-    StandardScaler,
-    MinMaxScaler,
-    RobustScaler,
-)
-
 import pandas as pd
 
 
-# Feature / Target Split
+# Monthly Sales Preparation
 
-def split_features_target(
+def prepare_monthly_sales(
     df: pd.DataFrame,
+    date_column: str,
     target_column: str,
-    feature_columns: list[str],
 ):
     """
-    Split dataframe into features and target.
+    Aggregate transaction-level sales into monthly sales.
     """
 
-    X = df[feature_columns].copy()
-    y = df[target_column].copy()
+    data = df[
+        [
+            date_column,
+            target_column,
+        ]
+    ].copy()
 
-    return X, y
+    # Ensure date column is datetime
 
-
-
-# Train-Test Split
-
-def split_dataset(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42,
-    shuffle=True,
-):
-    """
-    Split dataset into train and test sets.
-    """
-
-    return train_test_split(
-        X,
-        y,
-        test_size=test_size,
-        random_state=random_state,
-        shuffle=shuffle,
+    data[date_column] = pd.to_datetime(
+        data[date_column],
+        errors="coerce",
     )
 
+    # Remove rows with invalid dates or missing target values
 
-
-# Scaler
-
-def get_scaler(name: str):
-    """
-    Return scaler object.
-    """
-
-    scalers = {
-        "None": "passthrough",
-        "StandardScaler": StandardScaler(),
-        "MinMaxScaler": MinMaxScaler(),
-        "RobustScaler": RobustScaler(),
-    }
-
-    return scalers[name]
-
-
-
-# Build Preprocessor
-
-def build_preprocessor(
-    numeric_columns: list[str],
-    categorical_columns: list[str],
-    scaler_name: str,
-):
-    """
-    Create preprocessing pipeline.
-    """
-
-    numeric_transformer = Pipeline(
-        steps=[
-            (
-                "scaler",
-                get_scaler(scaler_name),
-            )
+    data = data.dropna(
+        subset=[
+            date_column,
+            target_column,
         ]
     )
 
-    categorical_transformer = Pipeline(
-        steps=[
-            (
-                "encoder",
-                OneHotEncoder(
-                    handle_unknown="ignore",
-                ),
-            )
-        ]
+    # Sort chronologically
+
+    data = data.sort_values(
+        by=date_column
     )
 
-    preprocessor = ColumnTransformer(
-        transformers=[
-            (
-                "num",
-                numeric_transformer,
-                numeric_columns,
-            ),
-            (
-                "cat",
-                categorical_transformer,
-                categorical_columns,
-            ),
-        ]
+    # Aggregate target values by month
+
+    monthly_sales = (
+        data
+        .set_index(date_column)
+        .resample("MS")[target_column]
+        .sum()
+        .reset_index()
     )
 
-    return preprocessor
+    return monthly_sales
 
 
+# Forecast Feature Generation
 
-# Fit & Transform
-
-def fit_preprocessor(
-    preprocessor,
-    X_train,
-):
-    """
-    Fit preprocessing pipeline.
-    """
-
-    preprocessor.fit(X_train)
-
-    return preprocessor
-
-
-def transform_dataset(
-    preprocessor,
-    X,
-):
-    """
-    Transform dataset.
-    """
-
-    return preprocessor.transform(X)
-
-
-
-
-
-# Complete Pipeline
-
-def preprocess_dataset(
-    df: pd.DataFrame,
+def create_forecast_features(
+    monthly_sales: pd.DataFrame,
+    date_column: str,
     target_column: str,
-    feature_columns: list[str],
-    numeric_columns: list[str],
-    categorical_columns: list[str],
-    scaler_name: str = "StandardScaler",
+):
+    """
+    Create historical and seasonal features
+    for monthly sales forecasting.
+    """
+
+    data = monthly_sales.copy()
+
+    # Recent sales history
+
+    data["Lag_1"] = (
+        data[target_column]
+        .shift(1)
+    )
+
+    data["Lag_2"] = (
+        data[target_column]
+        .shift(2)
+    )
+
+    data["Lag_3"] = (
+        data[target_column]
+        .shift(3)
+    )
+
+    # Same month previous year
+
+    data["Lag_12"] = (
+        data[target_column]
+        .shift(12)
+    )
+
+    # Calendar features
+
+    data["Month"] = (
+        data[date_column]
+        .dt.month
+    )
+
+    data["Quarter"] = (
+        data[date_column]
+        .dt.quarter
+    )
+
+    # Lag_12 requires 12 months of history
+
+    data = (
+        data
+        .dropna()
+        .reset_index(drop=True)
+    )
+
+    return data
+
+
+# Chronological Train-Test Split
+
+def split_time_series(
+    forecast_data: pd.DataFrame,
+    date_column: str,
+    target_column: str,
     test_size: float = 0.2,
-    random_state: int = 42,
-    shuffle: bool = True,
 ):
     """
-    Complete preprocessing workflow.
+    Split forecasting data chronologically into
+    training and testing sets.
     """
 
-    # Split features and target
-    X, y = split_features_target(
-        df,
-        target_column,
-        feature_columns,
+    feature_columns = [
+        "Lag_1",
+        "Lag_2",
+        "Lag_3",
+        "Lag_12",
+        "Month",
+        "Quarter",
+    ]
+
+    split_index = int(
+        len(forecast_data) * (1 - test_size)
     )
 
-    # Train-test split
-    (
-        X_train,
-        X_test,
-        y_train,
-        y_test,
-    ) = split_dataset(
-        X,
-        y,
-        test_size=test_size,
-        random_state=random_state,
-        shuffle=shuffle,
-    )
+    train_data = forecast_data.iloc[
+        :split_index
+    ]
 
-    # Build preprocessor
-    preprocessor = build_preprocessor(
-        numeric_columns=numeric_columns,
-        categorical_columns=categorical_columns,
-        scaler_name=scaler_name,
-    )
+    test_data = forecast_data.iloc[
+        split_index:
+    ]
 
-    # Fit on training data
-    preprocessor = fit_preprocessor(
-        preprocessor,
-        X_train,
-    )
+    X_train = train_data[
+        feature_columns
+    ].copy()
 
-    # Transform datasets
-    X_train = transform_dataset(
-        preprocessor,
-        X_train,
-    )
+    y_train = train_data[
+        target_column
+    ].copy()
 
-    X_test = transform_dataset(
-        preprocessor,
-        X_test,
-    )
+    X_test = test_data[
+        feature_columns
+    ].copy()
+
+    y_test = test_data[
+        target_column
+    ].copy()
+
+    train_dates = train_data[
+        date_column
+    ].copy()
+
+    test_dates = test_data[
+        date_column
+    ].copy()
 
     return {
         "X_train": X_train,
         "X_test": X_test,
         "y_train": y_train,
         "y_test": y_test,
-        "preprocessor": preprocessor,
+        "train_dates": train_dates,
+        "test_dates": test_dates,
+        "feature_columns": feature_columns,
     }

@@ -1,5 +1,6 @@
 import streamlit as st
 
+
 DEFAULT_SESSION_STATE = {
 
     # ------------------------------
@@ -19,25 +20,33 @@ DEFAULT_SESSION_STATE = {
     "date_columns": [],
 
     # ------------------------------
-    # Preprocessing
+    # Forecast Preprocessing
     # ------------------------------
 
     "target_column": None,
-    "feature_columns": [],
+    "date_column": None,
 
     "preprocessing": {
+        "monthly_sales": None,
+        "forecast_data": None,
+
         "X_train": None,
         "X_test": None,
         "y_train": None,
         "y_test": None,
-        "preprocessor": None,
+
+        "train_dates": None,
+        "test_dates": None,
+
+        "feature_columns": None,
     },
 
     # ------------------------------
-    # Model
+    # Model Training
     # ------------------------------
 
     "model": None,
+    "model_name": None,
     "metrics": None,
     "predictions": None,
 
@@ -46,12 +55,10 @@ DEFAULT_SESSION_STATE = {
     # ------------------------------
 
     "forecasting": {
-        "monthly_sales": None,
         "forecast_df": None,
-        "model": None,
-        "metrics": None,
     },
 }
+
 
 def initialize_session():
     """Initialize application session state."""
@@ -64,14 +71,45 @@ def initialize_session():
 def reset_pipeline():
     """Reset everything derived from the uploaded dataset."""
 
+    # Cleaned Dataset
+
     st.session_state["processed_df"] = None
+
+    # Column Configuration
+
+    st.session_state["numeric_columns"] = []
+    st.session_state["categorical_columns"] = []
+    st.session_state["date_columns"] = []
+
+    # Forecast Preprocessing
+
+    st.session_state["target_column"] = None
+    st.session_state["date_column"] = None
+
+    st.session_state["preprocessing"] = {
+        "monthly_sales": None,
+        "forecast_data": None,
+
+        "X_train": None,
+        "X_test": None,
+        "y_train": None,
+        "y_test": None,
+
+        "train_dates": None,
+        "test_dates": None,
+
+        "feature_columns": None,
+    }
+
+    # Model Training
+
     st.session_state["model"] = None
+    st.session_state["model_name"] = None
     st.session_state["metrics"] = None
     st.session_state["predictions"] = None
 
+    # Forecasting
+
     st.session_state["forecasting"] = {
-        "monthly_sales": None,
         "forecast_df": None,
-        "model": None,
-        "metrics": None,
     }

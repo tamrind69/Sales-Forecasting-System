@@ -4,14 +4,22 @@ import plotly.express as px
 
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.ensemble import (
+    RandomForestRegressor,
+    GradientBoostingRegressor,
+)
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score,
+)
 
 
 def show():
     st.set_page_config(page_title="Model Training")
 
-    st.title("🤖 Model Training")
+    st.title("🤖 Forecast Model Training")
+
 
     # Check previous stage
 
@@ -28,32 +36,11 @@ def show():
     X_test = preprocessing["X_test"]
     y_train = preprocessing["y_train"]
     y_test = preprocessing["y_test"]
-    preprocessor = preprocessing["preprocessor"]
 
-    feature_names = preprocessor.get_feature_names_out()
+    train_dates = preprocessing["train_dates"]
+    test_dates = preprocessing["test_dates"]
 
-
-    # Convert sparse matrices for display
-
-    if hasattr(X_train, "toarray"):
-        X_train_display = X_train.toarray()
-    else:
-        X_train_display = X_train
-
-    if hasattr(X_test, "toarray"):
-        X_test_display = X_test.toarray()
-    else:
-        X_test_display = X_test
-
-    X_train_df = pd.DataFrame(
-        X_train_display,
-        columns=feature_names,
-    )
-
-    X_test_df = pd.DataFrame(
-        X_test_display,
-        columns=feature_names,
-    )
+    feature_columns = preprocessing["feature_columns"]
 
 
     # Dataset Summary
@@ -64,42 +51,46 @@ def show():
 
     with col1:
         st.metric(
-            "Training Samples",
-            X_train.shape[0],
-        )
-
-        st.metric(
-            "Training Target",
-            len(y_train),
+            "Training Months",
+            len(X_train),
         )
 
     with col2:
         st.metric(
-            "Testing Samples",
-            X_test.shape[0],
-        )
-
-        st.metric(
-            "Testing Target",
-            len(y_test),
+            "Testing Months",
+            len(X_test),
         )
 
     with col3:
         st.metric(
-            "Generated Features",
-            len(feature_names),
+            "Forecast Features",
+            len(feature_columns),
         )
+
+    st.write(
+        f"**Training Period:** "
+        f"{train_dates.iloc[0].strftime('%b %Y')} "
+        f"to "
+        f"{train_dates.iloc[-1].strftime('%b %Y')}"
+    )
+
+    st.write(
+        f"**Testing Period:** "
+        f"{test_dates.iloc[0].strftime('%b %Y')} "
+        f"to "
+        f"{test_dates.iloc[-1].strftime('%b %Y')}"
+    )
 
     st.divider()
 
 
-    # Generated Features
+    # Forecast Features
 
-    st.subheader("Generated Features")
+    st.subheader("Forecast Features")
 
     feature_df = pd.DataFrame(
         {
-            "Feature Name": feature_names,
+            "Feature Name": feature_columns,
         }
     )
 
@@ -109,27 +100,33 @@ def show():
         use_container_width=True,
     )
 
-    st.divider()
 
+    # Training Dataset
 
-    # Processed Training Dataset
+    st.subheader("Training Dataset")
 
-    st.subheader("Processed Training Dataset")
+    training_df = X_train.copy()
+
+    training_df["Target Sales"] = y_train.to_numpy()
 
     st.dataframe(
-        X_train_df.head(),
+        training_df.head(),
+        hide_index=True,
         use_container_width=True,
     )
 
-    st.divider()
 
+    # Testing Dataset
 
-    # Processed Testing Dataset
+    st.subheader("Testing Dataset")
 
-    st.subheader("Processed Testing Dataset")
+    testing_df = X_test.copy()
+
+    testing_df["Target Sales"] = y_test.to_numpy()
 
     st.dataframe(
-        X_test_df.head(),
+        testing_df.head(),
+        hide_index=True,
         use_container_width=True,
     )
 
@@ -141,7 +138,7 @@ def show():
     st.subheader("Model Configuration")
 
     model_name = st.selectbox(
-        "Regression Model",
+        "Forecasting Model",
         [
             "Linear Regression",
             "Decision Tree Regressor",
@@ -160,32 +157,36 @@ def show():
 
         elif model_name == "Decision Tree Regressor":
             model = DecisionTreeRegressor(
-                random_state=42
+                random_state=42,
             )
 
         elif model_name == "Random Forest Regressor":
             model = RandomForestRegressor(
-                random_state=42
+                random_state=42,
             )
 
         elif model_name == "Gradient Boosting Regressor":
             model = GradientBoostingRegressor(
-                random_state=42
+                random_state=42,
             )
 
-        # Train model
+
+        # Train forecasting model
 
         model.fit(
             X_train,
             y_train,
         )
 
-        # Generate predictions
 
-        y_pred = model.predict(X_test)
+        # Predict later test months
+
+        y_pred = model.predict(
+            X_test
+        )
 
 
-        # Evaluation metrics
+        # Evaluation Metrics
 
         mae = mean_absolute_error(
             y_test,
@@ -206,14 +207,20 @@ def show():
         # Store model results
 
         st.session_state["model"] = model
-
+        st.session_state["model_name"] = model_name
         st.session_state["predictions"] = y_pred
 
         st.session_state["metrics"] = {
-            "model_name": model_name,
             "mae": mae,
             "rmse": rmse,
             "r2": r2,
+        }
+
+
+        # Previous future forecast is invalid
+
+        st.session_state["forecasting"] = {
+            "forecast_df": None,
         }
 
         st.success(
@@ -232,7 +239,7 @@ def show():
         st.subheader("Model Performance")
 
         st.write(
-            f"**Model:** {metrics['model_name']}"
+            f"**Model:** {st.session_state.model_name}"
         )
 
         col1, col2, col3 = st.columns(3)
@@ -262,10 +269,11 @@ def show():
 
         st.divider()
 
-        st.subheader("Prediction Results")
+        st.subheader("Test Period Predictions")
 
         prediction_df = pd.DataFrame(
             {
+                "Date": test_dates.to_numpy(),
                 "Actual Sales": y_test.to_numpy(),
                 "Predicted Sales": st.session_state["predictions"],
             }
@@ -278,47 +286,39 @@ def show():
 
         st.dataframe(
             prediction_df,
-            use_container_width=True,
             hide_index=True,
+            use_container_width=True,
         )
 
 
-        # Actual vs Predicted Plot
+        # Actual vs Predicted Over Time
 
         st.subheader("Actual vs Predicted Sales")
 
-        fig = px.scatter(
-            prediction_df,
-            x="Actual Sales",
-            y="Predicted Sales",
-            title="Actual vs Predicted Sales",
+        plot_df = prediction_df.melt(
+            id_vars="Date",
+            value_vars=[
+                "Actual Sales",
+                "Predicted Sales",
+            ],
+            var_name="Series",
+            value_name="Sales",
         )
 
-        min_value = min(
-            prediction_df["Actual Sales"].min(),
-            prediction_df["Predicted Sales"].min(),
-        )
-
-        max_value = max(
-            prediction_df["Actual Sales"].max(),
-            prediction_df["Predicted Sales"].max(),
-        )
-
-        fig.add_shape(
-            type="line",
-            x0=min_value,
-            y0=min_value,
-            x1=max_value,
-            y1=max_value,
-            line=dict(
-                dash="dash",
-            ),
+        fig = px.line(
+            plot_df,
+            x="Date",
+            y="Sales",
+            color="Series",
+            markers=True,
+            title="Actual vs Predicted Monthly Sales",
         )
 
         st.plotly_chart(
             fig,
             use_container_width=True,
         )
+
 
         # Model Comparison
 
@@ -327,8 +327,8 @@ def show():
         st.subheader("Model Comparison")
 
         st.write(
-            "Compare all available regression models using the current "
-            "training and testing dataset."
+            "Compare forecasting models and a seasonal baseline "
+            "using the same chronological testing period."
         )
 
         if st.button(
@@ -340,19 +340,21 @@ def show():
                 "Linear Regression": LinearRegression(),
 
                 "Decision Tree Regressor": DecisionTreeRegressor(
-                    random_state=42
+                    random_state=42,
                 ),
 
                 "Random Forest Regressor": RandomForestRegressor(
-                    random_state=42
+                    random_state=42,
                 ),
 
                 "Gradient Boosting Regressor": GradientBoostingRegressor(
-                    random_state=42
+                    random_state=42,
                 ),
             }
 
             comparison_results = []
+
+            # Machine Learning Models
 
             for name, comparison_model in models.items():
 
@@ -389,6 +391,40 @@ def show():
                     }
                 )
 
+
+            # Seasonal Naive Baseline
+
+            seasonal_pred = X_test[
+                "Lag_12"
+            ].to_numpy()
+
+            seasonal_mae = mean_absolute_error(
+                y_test,
+                seasonal_pred,
+            )
+
+            seasonal_rmse = mean_squared_error(
+                y_test,
+                seasonal_pred,
+            ) ** 0.5
+
+            seasonal_r2 = r2_score(
+                y_test,
+                seasonal_pred,
+            )
+
+            comparison_results.append(
+                {
+                    "Model": "Seasonal Naive Baseline",
+                    "MAE": seasonal_mae,
+                    "RMSE": seasonal_rmse,
+                    "R² Score": seasonal_r2,
+                }
+            )
+
+
+            # Comparison Table
+
             comparison_df = pd.DataFrame(
                 comparison_results
             )
@@ -404,13 +440,16 @@ def show():
                 use_container_width=True,
             )
 
+
+            # R² Comparison Plot
+
             st.subheader("R² Score Comparison")
 
             comparison_fig = px.bar(
                 comparison_df,
                 x="Model",
                 y="R² Score",
-                title="Model R² Score Comparison",
+                title="Forecast Model R² Comparison",
             )
 
             st.plotly_chart(
