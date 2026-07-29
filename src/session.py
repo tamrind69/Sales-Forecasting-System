@@ -40,6 +40,17 @@ DEFAULT_SESSION_STATE = {
     "model": None,
     "metrics": None,
     "predictions": None,
+
+    # ------------------------------
+    # Forecasting
+    # ------------------------------
+
+    "forecasting": {
+        "monthly_sales": None,
+        "forecast_df": None,
+        "model": None,
+        "metrics": None,
+    },
 }
 
 def initialize_session():
@@ -57,3 +68,10 @@ def reset_pipeline():
     st.session_state["model"] = None
     st.session_state["metrics"] = None
     st.session_state["predictions"] = None
+
+    st.session_state["forecasting"] = {
+        "monthly_sales": None,
+        "forecast_df": None,
+        "model": None,
+        "metrics": None,
+    }
