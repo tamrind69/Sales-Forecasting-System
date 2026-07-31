@@ -237,6 +237,8 @@ def show():
         metrics=metrics,
         monthly_sales=monthly_sales,
         forecast_df=forecast_df,
+        date_column=date_column,
+        target_column=target_column,
     )
 
     st.download_button(
