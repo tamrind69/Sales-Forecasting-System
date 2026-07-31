@@ -95,7 +95,7 @@ Sales-Forecasting-System/
 Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/tamrind69/Sales-Forecasting-System
 cd Sales-Forecasting-System
 ```
 
